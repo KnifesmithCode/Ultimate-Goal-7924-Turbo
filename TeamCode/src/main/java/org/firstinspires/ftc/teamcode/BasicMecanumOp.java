@@ -29,12 +29,12 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
+
+import org.firstinspires.ftc.teamcode.hardware.Robot;
+import org.firstinspires.ftc.teamcode.util.NumberUtil;
 
 /**
  * This file contains an example of an iterative (Non-Linear) "OpMode".
@@ -54,11 +54,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 // @Disabled
 public class BasicMecanumOp extends OpMode {
     // Declare OpMode members.
-    private ElapsedTime runtime = new ElapsedTime();
-    private DcMotor leftFrontDrive = null;
-    private DcMotor leftRearDrive = null;
-    private DcMotor rightFrontDrive = null;
-    private DcMotor rightRearDrive = null;
+    private final ElapsedTime runtime = new ElapsedTime();
+    Robot robot;
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -70,17 +67,10 @@ public class BasicMecanumOp extends OpMode {
         // Initialize the hardware variables. Note that the strings used here as parameters
         // to 'get' must correspond to the names assigned during the robot configuration
         // step (using the FTC Robot Controller app on the phone).
-        leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front");
-        leftRearDrive = hardwareMap.get(DcMotor.class, "left_rear");
-        rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front");
-        rightRearDrive = hardwareMap.get(DcMotor.class, "right_rear");
+        robot = new Robot(hardwareMap);
 
         // Most robots need the motor on one side to be reversed to drive forward
         // Reverse the motor that runs backwards when connected directly to the battery
-        leftFrontDrive.setDirection(DcMotor.Direction.REVERSE);
-        leftRearDrive.setDirection(DcMotorSimple.Direction.REVERSE);
-        rightFrontDrive.setDirection(DcMotor.Direction.FORWARD);
-        rightRearDrive.setDirection(DcMotor.Direction.FORWARD);
 
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
@@ -106,34 +96,31 @@ public class BasicMecanumOp extends OpMode {
      */
     @Override
     public void loop() {
-        // Setup a variable for each drive wheel to save power level for telemetry
-        double leftPower;
-        double rightPower;
+        double y = -gamepad1.left_stick_y;
+        double x = gamepad1.left_stick_x * 1.5;
+        double rot = gamepad1.right_stick_x;
 
-        // Choose to drive using either Tank Mode, or POV Mode
-        // Comment out the method that's not used.  The default below is POV.
+        double[] motorPower = new double[3];
 
-        // POV Mode uses left stick to go forward, and right stick to turn.
-        // - This uses basic math to combine motions and is easier to drive straight.
-        // double drive = -gamepad1.left_stick_y;
-        // double turn  =  gamepad1.right_stick_x;
-        // leftPower    = Range.clip(drive + turn, -1.0, 1.0) ;
-        // rightPower   = Range.clip(drive - turn, -1.0, 1.0) ;
+        motorPower[0] = y + x + rot;
+        motorPower[1] = y - x + rot;
+        motorPower[2] = y - x - rot;
+        motorPower[3] = y + x - rot;
 
-        // Tank Mode uses one stick to control each wheel.
-        // - This requires no math, but it is hard to drive forward slowly and keep straight.
-        leftPower = -gamepad1.left_stick_y;
-        rightPower = -gamepad1.right_stick_y;
+        double max = NumberUtil.max(motorPower);
 
-        // Send calculated power to wheels
-        leftFrontDrive.setPower(leftPower);
-        leftRearDrive.setPower(leftPower);
-        rightFrontDrive.setPower(rightPower);
-        rightRearDrive.setPower(rightPower);
+        if (max > 1) {
+            for (int i = 0; i < motorPower.length; i++) {
+                motorPower[i] /= max;
+            }
+        }
+
+        robot.dt.setPowers(motorPower);
 
         // Show the elapsed game time and wheel power.
         telemetry.addData("Status", "Run Time: " + runtime.toString());
-        telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
+        telemetry.addData("Motors", "lf (%.2f) | rf (%.2f)", motorPower[0], motorPower[2]);
+        telemetry.addData("Motors", "lr (%.2f) | rr (%.2f)", motorPower[1], motorPower[3]);
     }
 
     /*
