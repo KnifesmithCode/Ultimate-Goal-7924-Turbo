@@ -21,9 +21,9 @@ public class MecanumDrivetrain {
             1 3
          */
         motors[0] = hardwareMap.get(DcMotorEx.class, "lf");
-        motors[0] = hardwareMap.get(DcMotorEx.class, "lr");
-        motors[0] = hardwareMap.get(DcMotorEx.class, "rf");
-        motors[0] = hardwareMap.get(DcMotorEx.class, "rr");
+        motors[1] = hardwareMap.get(DcMotorEx.class, "lr");
+        motors[2] = hardwareMap.get(DcMotorEx.class, "rf");
+        motors[3] = hardwareMap.get(DcMotorEx.class, "rr");
 
         // Set motor directions
         motors[0].setDirection(DcMotor.Direction.REVERSE);
