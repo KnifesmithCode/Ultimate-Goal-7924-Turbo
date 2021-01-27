@@ -23,4 +23,7 @@ dependencies {
     implementation('com.acmerobotics.dashboard:dashboard:0.4.0') {
         exclude group: 'org.firstinspires.ftc'
     }
+
+    // EasyOpenCV (https://github.com/OpenFTC/EasyOpenCV)
+    implementation 'org.openftc:easyopencv:1.4.4'
 }
