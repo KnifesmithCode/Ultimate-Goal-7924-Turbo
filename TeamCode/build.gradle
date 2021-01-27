@@ -15,5 +15,12 @@ dependencies {
      * Other Modules
      */
     implementation project(':FtcRobotController')
+
+    // Roadrunner (https://acme-robotics.gitbook.io/road-runner/)
     implementation 'com.acmerobotics.roadrunner:core:0.5.3'
+
+    // FTC Dashboard (https://acmerobotics.github.io/ftc-dashboard/)
+    implementation('com.acmerobotics.dashboard:dashboard:0.4.0') {
+        exclude group: 'org.firstinspires.ftc'
+    }
 }

@@ -64,4 +64,9 @@ dependencies {
      * External
      */
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+
+    // FTC Dashboard (https://acmerobotics.github.io/ftc-dashboard/)
+    implementation('com.acmerobotics.dashboard:dashboard:0.4.0') {
+        exclude group: 'org.firstinspires.ftc'
+    }
 }
