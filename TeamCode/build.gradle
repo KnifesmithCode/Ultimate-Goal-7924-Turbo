@@ -26,7 +26,4 @@ dependencies {
 
     // EasyOpenCV (https://github.com/OpenFTC/EasyOpenCV)
     implementation 'org.openftc:easyopencv:1.4.4'
-
-    // FTCLib (https://github.com/FTCLib/FTCLib)
-    implementation 'com.arcrobotics:ftclib:1.1.6'
 }
