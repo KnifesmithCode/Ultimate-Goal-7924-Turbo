@@ -16,6 +16,9 @@ dependencies {
      */
     implementation project(':FtcRobotController')
 
+    // Apache Commons Math (https://commons.apache.org/proper/commons-math/)
+    implementation 'org.apache.commons:commons-math3:3.6.1'
+
     // Roadrunner (https://acme-robotics.gitbook.io/road-runner/)
     implementation 'com.acmerobotics.roadrunner:core:0.5.3'
 
