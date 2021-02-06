@@ -2,11 +2,10 @@ package org.firstinspires.ftc.teamcode.hardware;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 public class MecanumDrivetrain {
-    DcMotorEx[] motors = new DcMotorEx[3];
+    public DcMotorEx[] motors = new DcMotorEx[4];
 
     /**
      * Create and initialize the Mecanum drivetrain from the HardwareMap
@@ -25,9 +24,14 @@ public class MecanumDrivetrain {
         motors[2] = hardwareMap.get(DcMotorEx.class, "rf");
         motors[3] = hardwareMap.get(DcMotorEx.class, "rr");
 
+        // Set the motors to run using encoders
+        for(DcMotorEx motor : motors) {
+            motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        }
+
         // Set motor directions
         motors[0].setDirection(DcMotor.Direction.REVERSE);
-        motors[1].setDirection(DcMotorSimple.Direction.REVERSE);
+        motors[1].setDirection(DcMotor.Direction.REVERSE);
         motors[2].setDirection(DcMotor.Direction.FORWARD);
         motors[3].setDirection(DcMotor.Direction.FORWARD);
     }
@@ -42,4 +46,29 @@ public class MecanumDrivetrain {
             motors[i].setPower(power[i]);
         }
     }
+
+    public void setPowers(double power) {
+        for (int i = 0; i < motors.length; i++) {
+            motors[i].setPower(power);
+        }
+    }
+
+    /**
+     * Send given velocity to each and every motor
+     *
+     * @param power An array of power doubles to send to the motors, in the same order as motors
+     */
+    public void setVelocities(double[] power) {
+        for (int i = 0; i < motors.length; i++) {
+            motors[i].setVelocity(power[i]);
+        }
+    }
+
+    //#region Autonomous
+    public void setMotorMode(DcMotor.RunMode mode) {
+        for(int i = 0; i < motors.length; i++) {
+            motors[i].setMode(mode);
+        }
+    }
+    //#endregion
 }

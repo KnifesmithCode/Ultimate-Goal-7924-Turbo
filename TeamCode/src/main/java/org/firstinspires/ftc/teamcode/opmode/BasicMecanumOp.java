@@ -27,13 +27,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.opmode;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.exception.RobotCoreException;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.hardware.RingLauncher;
 import org.firstinspires.ftc.teamcode.hardware.Robot;
+import org.firstinspires.ftc.teamcode.hardware.ServoPosition;
 import org.firstinspires.ftc.teamcode.util.NumberUtil;
 
 /**
@@ -47,15 +54,28 @@ import org.firstinspires.ftc.teamcode.util.NumberUtil;
  * It includes all the skeletal structure that all iterative OpModes contain.
  * <p>
  * Use Android Studios to Copy this Class, and Paste it into your team's code folder with a new name.
- * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode list
+ * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode lista
  */
 
-@TeleOp(name = "Basic: Iterative OpMode", group = "Iterative Opmode")
+@TeleOp(name = "Basic Mecanum OpMode", group = "TeleOp")
 // @Disabled
+@Config
 public class BasicMecanumOp extends OpMode {
+    // Allow changing of mecanum x-axis coefficient
+    public static double MECANUM_X_OFFSET = 1.5d;
+
     // Declare OpMode members.
     private final ElapsedTime runtime = new ElapsedTime();
     Robot robot;
+    FtcDashboard dashboard;
+    Telemetry dashboardTelemetry;
+
+    ServoPosition armPos = ServoPosition.DOWN;
+    boolean claw = false;
+    double lastClaw = 0d;
+
+    Gamepad oldGamepad1 = new Gamepad();
+    Gamepad oldGamepad2 = new Gamepad();
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -69,8 +89,10 @@ public class BasicMecanumOp extends OpMode {
         // step (using the FTC Robot Controller app on the phone).
         robot = new Robot(hardwareMap);
 
-        // Most robots need the motor on one side to be reversed to drive forward
-        // Reverse the motor that runs backwards when connected directly to the battery
+        robot.launcher.setHammerPosition(ServoPosition.OPEN);
+
+        dashboard = FtcDashboard.getInstance();
+        dashboardTelemetry = dashboard.getTelemetry();
 
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
@@ -97,10 +119,10 @@ public class BasicMecanumOp extends OpMode {
     @Override
     public void loop() {
         double y = -gamepad1.left_stick_y;
-        double x = gamepad1.left_stick_x * 1.5;
+        double x = gamepad1.left_stick_x * MECANUM_X_OFFSET;
         double rot = gamepad1.right_stick_x;
 
-        double[] motorPower = new double[3];
+        double[] motorPower = new double[4];
 
         motorPower[0] = y + x + rot;
         motorPower[1] = y - x + rot;
@@ -115,12 +137,60 @@ public class BasicMecanumOp extends OpMode {
             }
         }
 
+        if(gamepad1.x) {
+            for(int i = 0; i < motorPower.length; i++) {
+                motorPower[i] *= -1.0d;
+            }
+        }
+
         robot.dt.setPowers(motorPower);
+        robot.intake.updatePower();
+
+        if(gamepad1.dpad_up && !oldGamepad1.dpad_up) {
+            robot.launcher.setLauncherVelocity(Math.min(RingLauncher.LAUNCHER_VELOCITY + 0.01d, 1.0d));
+        }
+        if(gamepad1.dpad_down && !oldGamepad1.dpad_down) {
+            robot.launcher.setLauncherVelocity(Math.max(RingLauncher.LAUNCHER_VELOCITY - 0.01d, 0.0d));
+        }
+
+        robot.launcher.updateVelocity();
+
+        double v = robot.launcher.flywheelMotor.getVelocity();
+        double delta = Math.abs(robot.launcher.getTargetV() - v);
+
+        if (gamepad1.a && delta <= 20) {
+            robot.launcher.setHammerPosition(ServoPosition.CLOSED);
+        } else {
+            robot.launcher.setHammerPosition(ServoPosition.OPEN);
+        }
+
+        if(gamepad1.right_bumper && !oldGamepad1.right_bumper) {
+            robot.wobbleArm.toggleClaw();
+        }
+
+        armPos = ServoPosition.MIDDLE;
+        if(gamepad1.b) armPos = ServoPosition.DOWN;
+        if(gamepad1.y) armPos = ServoPosition.MIDDLE;
+        if(gamepad1.left_bumper) armPos = ServoPosition.UP;
+
+        robot.wobbleArm.setArmPosition(armPos);
 
         // Show the elapsed game time and wheel power.
         telemetry.addData("Status", "Run Time: " + runtime.toString());
         telemetry.addData("Motors", "lf (%.2f) | rf (%.2f)", motorPower[0], motorPower[2]);
         telemetry.addData("Motors", "lr (%.2f) | rr (%.2f)", motorPower[1], motorPower[3]);
+        telemetry.addData("LauncherV", "%.3f",
+                v);
+        dashboardTelemetry.addData("LauncherV", "%.3f",
+                v);
+
+        try {
+            oldGamepad1.copy(gamepad1);
+            oldGamepad2.copy(gamepad2);
+        } catch (RobotCoreException e) {
+            telemetry.addData("GP ERROR", "Unable to copy gamepads");
+        }
+        dashboardTelemetry.update();
     }
 
     /*
@@ -128,6 +198,7 @@ public class BasicMecanumOp extends OpMode {
      */
     @Override
     public void stop() {
+        robot.launcher.setHammerPosition(ServoPosition.OPEN);
     }
 
 }
