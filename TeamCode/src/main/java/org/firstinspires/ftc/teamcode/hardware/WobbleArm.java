@@ -1,8 +1,11 @@
 package org.firstinspires.ftc.teamcode.hardware;
 
 import com.acmerobotics.dashboard.config.Config;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
+
+import org.firstinspires.ftc.teamcode.util.AccessoryPosition;
 
 @Config
 public class WobbleArm {
@@ -12,69 +15,72 @@ public class WobbleArm {
     // Arm values: 0.2 to 1.0
     // Claw values: 0.2 to 0.85
 
-    Servo armServo;
+    DcMotor armMotor;
     Servo clawServo;
 
-    private ServoPosition armPos;
-    private ServoPosition clawPos;
+    private AccessoryPosition armPos;
+    private AccessoryPosition clawPos;
 
     public WobbleArm(HardwareMap hardwareMap) {
-        armServo = hardwareMap.get(Servo.class, "arm");
+        armMotor = hardwareMap.get(DcMotor.class, "arm");
         clawServo = hardwareMap.get(Servo.class, "claw");
 
-        armPos = ServoPosition.UP;
-        clawPos = ServoPosition.OPEN;
+        armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        armPos = AccessoryPosition.UP;
+        clawPos = AccessoryPosition.OPEN;
     }
 
-    public ServoPosition toggleClaw() {
+    public AccessoryPosition toggleClaw() {
         // This if block could be simplified, but I think that it is more expressive this way
-        if(clawPos == ServoPosition.CLOSED) {
-            clawPos = ServoPosition.OPEN;
-        } else if (clawPos == ServoPosition.OPEN) {
-            clawPos = ServoPosition.CLOSED;
+        if(clawPos == AccessoryPosition.CLOSED) {
+            clawPos = AccessoryPosition.OPEN;
+        } else if (clawPos == AccessoryPosition.OPEN) {
+            clawPos = AccessoryPosition.CLOSED;
         } else {
             // This should not happen, but just in case, open the claw
-            clawPos = ServoPosition.OPEN;
+            clawPos = AccessoryPosition.OPEN;
         }
 
         updateClawPosition();
         return clawPos;
     }
 
-    public ServoPosition getArmPosition() {
+    public AccessoryPosition getArmPosition() {
         return armPos;
     }
 
-    public ServoPosition getClawPosition() {
+    public AccessoryPosition getClawPosition() {
         return clawPos;
     }
 
-    public void setArmPosition(ServoPosition pos) {
+    public void setArmPosition(AccessoryPosition pos) {
         this.armPos = pos;
         updateArmPosition();
     }
 
-    public void setClawPosition(ServoPosition pos) {
+    public void setClawPosition(AccessoryPosition pos) {
         this.clawPos = pos;
         updateClawPosition();
     }
 
-    public void updateArmPosition() {
+    private void updateArmPosition() {
         switch (armPos) {
             case DOWN:
-                armServo.setPosition(0.71d);
+                armMotor.setTargetPosition(-840);
                 break;
             case MIDDLE:
-                armServo.setPosition(0.32d);
+                armMotor.setTargetPosition(0);
                 break;
             default:
             case UP:
-                armServo.setPosition(0.15d);
+                armMotor.setTargetPosition(210);
                 break;
         }
+        armMotor.setPower(0.8d);
     }
 
-    public void updateClawPosition() {
+    private void updateClawPosition() {
         switch (clawPos) {
             case CLOSED:
                 clawServo.setPosition(0.5d);

@@ -6,6 +6,8 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.teamcode.util.AccessoryPosition;
+
 @Config
 public class RingLauncher {
     // Static members to be used by the Dashboard
@@ -75,7 +77,7 @@ public class RingLauncher {
      *
      * @param pos An enum for position (either HammerPosition.OPEN or HammerPosition.CLOSED)
      */
-    public void setHammerPosition(ServoPosition pos) {
+    public void setHammerPosition(AccessoryPosition pos) {
         switch (pos) {
             case CLOSED:
                 hammerServo.setPosition(0.45d);
@@ -90,7 +92,7 @@ public class RingLauncher {
         return  Math.abs(getTargetV() - flywheelMotor.getVelocity()) <= 20;
     }
 
-    public ServoPosition getHammerPosition() {
-        return hammerServo.getPosition() == 0.65d ? ServoPosition.CLOSED : ServoPosition.OPEN;
+    public AccessoryPosition getHammerPosition() {
+        return hammerServo.getPosition() == 0.65d ? AccessoryPosition.CLOSED : AccessoryPosition.OPEN;
     }
 }

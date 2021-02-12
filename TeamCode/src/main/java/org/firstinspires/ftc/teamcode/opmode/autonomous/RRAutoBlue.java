@@ -13,7 +13,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.hardware.Robot;
-import org.firstinspires.ftc.teamcode.hardware.ServoPosition;
+import org.firstinspires.ftc.teamcode.util.AccessoryPosition;
 import org.firstinspires.ftc.teamcode.roadrunner.util.LynxModuleUtil;
 import org.firstinspires.ftc.teamcode.util.PoseStorage;
 import org.firstinspires.ftc.teamcode.util.RingsPipeline;
@@ -64,7 +64,7 @@ public class RRAutoBlue extends LinearOpMode {
         RingsPipeline pipeline = new RingsPipeline();
         camera.setPipeline(pipeline);
 
-        robot.wobbleLatch.setLatchPosition(ServoPosition.CLOSED);
+        robot.wobbleLatch.setLatchPosition(AccessoryPosition.CLOSED);
 
         while (!isStarted()) {
             telemetry.addData("qty", pipeline.getQty().name());
@@ -151,27 +151,27 @@ public class RRAutoBlue extends LinearOpMode {
         telemetry.update();
 
         for (int i = 0; i < 3; i++) {
-            robot.launcher.setHammerPosition(ServoPosition.CLOSED);
+            robot.launcher.setHammerPosition(AccessoryPosition.CLOSED);
             sleep(750);
-            robot.launcher.setHammerPosition(ServoPosition.OPEN);
+            robot.launcher.setHammerPosition(AccessoryPosition.OPEN);
             if(i < 2) {
                 sleep(2000);
             }
         }
 
-        robot.wobbleArm.setArmPosition(ServoPosition.MIDDLE);
-        robot.wobbleArm.setClawPosition(ServoPosition.OPEN);
+        robot.wobbleArm.setArmPosition(AccessoryPosition.MIDDLE);
+        robot.wobbleArm.setClawPosition(AccessoryPosition.OPEN);
 
         telemetry.addData("Status", "Following traj3");
         telemetry.update();
 
         robot.dt.followTrajectory(traj3);
 
-        robot.wobbleArm.setArmPosition(ServoPosition.DOWN);
+        robot.wobbleArm.setArmPosition(AccessoryPosition.DOWN);
         sleep(2000);
-        robot.wobbleArm.setClawPosition(ServoPosition.CLOSED);
+        robot.wobbleArm.setClawPosition(AccessoryPosition.CLOSED);
         sleep(500);
-        robot.wobbleArm.setArmPosition(ServoPosition.MIDDLE);
+        robot.wobbleArm.setArmPosition(AccessoryPosition.MIDDLE);
         sleep(500);
 
         telemetry.addData("Status", "Following traj4");
@@ -179,9 +179,9 @@ public class RRAutoBlue extends LinearOpMode {
 
         robot.dt.followTrajectory(traj4);
 
-        robot.wobbleArm.setArmPosition(ServoPosition.DOWN);
+        robot.wobbleArm.setArmPosition(AccessoryPosition.DOWN);
         sleep(500);
-        robot.wobbleArm.setClawPosition(ServoPosition.OPEN);
+        robot.wobbleArm.setClawPosition(AccessoryPosition.OPEN);
         sleep(500);
 
         telemetry.addData("Status", "Following traj5");
@@ -189,7 +189,7 @@ public class RRAutoBlue extends LinearOpMode {
 
         robot.dt.followTrajectory(traj5);
 
-        robot.wobbleArm.setArmPosition(ServoPosition.UP);
+        robot.wobbleArm.setArmPosition(AccessoryPosition.UP);
 
         PoseStorage.POSE = robot.dt.getPoseEstimate();
         stop();
@@ -198,10 +198,10 @@ public class RRAutoBlue extends LinearOpMode {
     private void launchRing(ElapsedTime runtime) {
         double initial = runtime.milliseconds();
         while (runtime.milliseconds() < (initial + 1000d) && opModeIsActive()) {
-            robot.launcher.setHammerPosition(ServoPosition.CLOSED);
+            robot.launcher.setHammerPosition(AccessoryPosition.CLOSED);
         }
         while (runtime.milliseconds() < (initial + 2000d) && opModeIsActive()) {
-            robot.launcher.setHammerPosition(ServoPosition.OPEN);
+            robot.launcher.setHammerPosition(AccessoryPosition.OPEN);
         }
     }
 

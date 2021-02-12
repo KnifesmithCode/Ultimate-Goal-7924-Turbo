@@ -44,7 +44,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.hardware.RingLauncher;
 import org.firstinspires.ftc.teamcode.hardware.Robot;
-import org.firstinspires.ftc.teamcode.hardware.ServoPosition;
+import org.firstinspires.ftc.teamcode.util.AccessoryPosition;
 import org.firstinspires.ftc.teamcode.util.DashboardUtil;
 import org.firstinspires.ftc.teamcode.util.PoseStorage;
 
@@ -72,7 +72,7 @@ public class CompetitionTeleOp extends OpMode {
     private final ElapsedTime runtime = new ElapsedTime();
     Robot robot;
 
-    ServoPosition armPos = ServoPosition.MIDDLE;
+    AccessoryPosition armPos = AccessoryPosition.MIDDLE;
 
     Gamepad oldGamepad1 = new Gamepad();
     Gamepad oldGamepad2 = new Gamepad();
@@ -95,7 +95,7 @@ public class CompetitionTeleOp extends OpMode {
         // step (using the FTC Robot Controller app on the phone).
         robot = new Robot(hardwareMap);
 
-        robot.launcher.setHammerPosition(ServoPosition.OPEN);
+        robot.launcher.setHammerPosition(AccessoryPosition.OPEN);
 
         dashboard = FtcDashboard.getInstance();
 
@@ -158,9 +158,9 @@ public class CompetitionTeleOp extends OpMode {
         double targetV = robot.launcher.getTargetV();
 
         if (gamepad1.a && robot.launcher.isAtTargetVelocity()) {
-            robot.launcher.setHammerPosition(ServoPosition.CLOSED);
+            robot.launcher.setHammerPosition(AccessoryPosition.CLOSED);
         } else {
-            robot.launcher.setHammerPosition(ServoPosition.OPEN);
+            robot.launcher.setHammerPosition(AccessoryPosition.OPEN);
         }
 
         if(gamepad1.right_bumper && !oldGamepad1.right_bumper) {
@@ -170,10 +170,10 @@ public class CompetitionTeleOp extends OpMode {
         armPos =
                 robot.wobbleArm != null && robot.wobbleArm.getArmPosition() != null ?
                         robot.wobbleArm.getArmPosition() :
-                        ServoPosition.MIDDLE;
-        if(gamepad1.b) armPos = ServoPosition.DOWN;
-        if(gamepad1.y) armPos = ServoPosition.MIDDLE;
-        if(gamepad1.left_bumper) armPos = ServoPosition.UP;
+                        AccessoryPosition.MIDDLE;
+        if(gamepad1.b) armPos = AccessoryPosition.DOWN;
+        if(gamepad1.y) armPos = AccessoryPosition.MIDDLE;
+        if(gamepad1.left_bumper) armPos = AccessoryPosition.UP;
 
         robot.wobbleArm.setArmPosition(armPos);
 
@@ -213,7 +213,7 @@ public class CompetitionTeleOp extends OpMode {
      */
     @Override
     public void stop() {
-        robot.launcher.setHammerPosition(ServoPosition.OPEN);
+        robot.launcher.setHammerPosition(AccessoryPosition.OPEN);
     }
 
 }

@@ -3,32 +3,34 @@ package org.firstinspires.ftc.teamcode.hardware;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.teamcode.util.AccessoryPosition;
+
 public class WobbleLatch {
     Servo latchServo;
 
-    private ServoPosition latchPos;
+    private AccessoryPosition latchPos;
 
     public WobbleLatch(HardwareMap hardwareMap) {
-        latchPos = ServoPosition.CLOSED;
+        latchPos = AccessoryPosition.CLOSED;
         latchServo = hardwareMap.get(Servo.class, "latch");
     }
 
-    public ServoPosition toggleLatch() {
+    public AccessoryPosition toggleLatch() {
         // This if block could be simplified, but I think that it is more expressive this way
-        if(latchPos == ServoPosition.CLOSED) {
-            latchPos = ServoPosition.OPEN;
-        } else if (latchPos == ServoPosition.OPEN) {
-            latchPos = ServoPosition.CLOSED;
+        if(latchPos == AccessoryPosition.CLOSED) {
+            latchPos = AccessoryPosition.OPEN;
+        } else if (latchPos == AccessoryPosition.OPEN) {
+            latchPos = AccessoryPosition.CLOSED;
         } else {
             // This should not happen, but just in case, open the claw
-            latchPos = ServoPosition.OPEN;
+            latchPos = AccessoryPosition.OPEN;
         }
 
         updateLatchPosition();
         return latchPos;
     }
 
-    public void setLatchPosition(ServoPosition pos) {
+    public void setLatchPosition(AccessoryPosition pos) {
         this.latchPos = pos;
         updateLatchPosition();
     }

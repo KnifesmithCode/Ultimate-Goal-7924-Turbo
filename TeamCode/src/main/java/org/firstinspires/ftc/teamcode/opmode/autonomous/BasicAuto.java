@@ -10,7 +10,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.hardware.Robot;
-import org.firstinspires.ftc.teamcode.hardware.ServoPosition;
+import org.firstinspires.ftc.teamcode.util.AccessoryPosition;
 import org.firstinspires.ftc.teamcode.util.RingsPipeline;
 import org.firstinspires.ftc.teamcode.roadrunner.util.LynxModuleUtil;
 import org.firstinspires.ftc.teamcode.util.PoseStorage;
@@ -66,7 +66,7 @@ public class BasicAuto extends LinearOpMode {
         RingsPipeline pipeline = new RingsPipeline();
         camera.setPipeline(pipeline);
 
-        robot.wobbleLatch.setLatchPosition(ServoPosition.CLOSED);
+        robot.wobbleLatch.setLatchPosition(AccessoryPosition.CLOSED);
 
         while(!isStarted()) {
             telemetry.addData("qty", pipeline.getQty().name());
@@ -122,13 +122,13 @@ public class BasicAuto extends LinearOpMode {
 
         robot.dt.followTrajectory(traj1);
         for(int i = 0; i < 3; i++ ) {
-            robot.launcher.setHammerPosition(ServoPosition.CLOSED);
+            robot.launcher.setHammerPosition(AccessoryPosition.CLOSED);
             sleep(800);
-            robot.launcher.setHammerPosition(ServoPosition.OPEN);
+            robot.launcher.setHammerPosition(AccessoryPosition.OPEN);
             sleep(800);
         }
 
-        robot.wobbleArm.setArmPosition(ServoPosition.DOWN);
+        robot.wobbleArm.setArmPosition(AccessoryPosition.DOWN);
 
         robot.dt.followTrajectory(traj2);
         robot.wobbleLatch.toggleLatch();
@@ -142,10 +142,10 @@ public class BasicAuto extends LinearOpMode {
     private void launchRing(ElapsedTime runtime) {
         double initial = runtime.milliseconds();
         while (runtime.milliseconds() < (initial + 1000d) && opModeIsActive()) {
-            robot.launcher.setHammerPosition(ServoPosition.CLOSED);
+            robot.launcher.setHammerPosition(AccessoryPosition.CLOSED);
         }
         while (runtime.milliseconds() < (initial + 2000d) && opModeIsActive()) {
-            robot.launcher.setHammerPosition(ServoPosition.OPEN);
+            robot.launcher.setHammerPosition(AccessoryPosition.OPEN);
         }
     }
 
