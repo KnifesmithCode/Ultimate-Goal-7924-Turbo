@@ -7,9 +7,6 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 @Config
 public class Intake {
-    // Intake speed
-    public static double INTAKE_POWER = 1.0d;
-
     private DcMotorEx intakeMotor;
 
     public Intake(HardwareMap hardwareMap) {
@@ -17,7 +14,12 @@ public class Intake {
         intakeMotor.setDirection(DcMotor.Direction.FORWARD);
     }
 
-    public void updatePower() {
-        intakeMotor.setPower(INTAKE_POWER);
+    public void runForward() {
+        intakeMotor.setPower(1.0d);
     }
+
+    public void runBackward() {
+        intakeMotor.setPower(-1.0d);
+    }
+
 }

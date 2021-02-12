@@ -30,18 +30,23 @@
 package org.firstinspires.ftc.teamcode.opmode;
 
 import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.exception.RobotCoreException;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.hardware.RingLauncher;
 import org.firstinspires.ftc.teamcode.hardware.Robot;
 import org.firstinspires.ftc.teamcode.hardware.ServoPosition;
-import org.firstinspires.ftc.teamcode.util.NumberUtil;
+import org.firstinspires.ftc.teamcode.util.DashboardUtil;
+import org.firstinspires.ftc.teamcode.util.PoseStorage;
 
 /**
  * This file contains an example of an iterative (Non-Linear) "OpMode".
@@ -57,25 +62,26 @@ import org.firstinspires.ftc.teamcode.util.NumberUtil;
  * Remove or comment out the @Disabled line to add this opmode to the Driver Station OpMode lista
  */
 
-@TeleOp(name = "Basic Mecanum OpMode", group = "TeleOp")
+@TeleOp(name = "Competition TeleOP", group = "TeleOp")
 // @Disabled
 @Config
-public class BasicMecanumOp extends OpMode {
-    // Allow changing of mecanum x-axis coefficient
-    public static double MECANUM_X_OFFSET = 1.5d;
+public class CompetitionTeleOp extends OpMode {
+    public static PIDFCoefficients LAUNCHER_PID = new PIDFCoefficients();
 
     // Declare OpMode members.
     private final ElapsedTime runtime = new ElapsedTime();
     Robot robot;
-    FtcDashboard dashboard;
-    Telemetry dashboardTelemetry;
 
-    ServoPosition armPos = ServoPosition.DOWN;
-    boolean claw = false;
-    double lastClaw = 0d;
+    ServoPosition armPos = ServoPosition.MIDDLE;
 
     Gamepad oldGamepad1 = new Gamepad();
     Gamepad oldGamepad2 = new Gamepad();
+
+    FtcDashboard dashboard;
+    TelemetryPacket packet;
+    Canvas canvas;
+
+    Pose2d poseEstimate;
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -92,7 +98,11 @@ public class BasicMecanumOp extends OpMode {
         robot.launcher.setHammerPosition(ServoPosition.OPEN);
 
         dashboard = FtcDashboard.getInstance();
-        dashboardTelemetry = dashboard.getTelemetry();
+
+        robot.dt.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        robot.dt.setPoseEstimate(PoseStorage.POSE);
+
+        LAUNCHER_PID = robot.launcher.flywheelMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
@@ -118,33 +128,16 @@ public class BasicMecanumOp extends OpMode {
      */
     @Override
     public void loop() {
-        double y = -gamepad1.left_stick_y;
-        double x = gamepad1.left_stick_x * MECANUM_X_OFFSET;
-        double rot = gamepad1.right_stick_x;
+        robot.dt.setWeightedDrivePower(
+                new Pose2d(
+                        -gamepad1.left_stick_y,
+                        -gamepad1.left_stick_x,
+                        -gamepad1.right_stick_x
+                )
+        );
 
-        double[] motorPower = new double[4];
-
-        motorPower[0] = y + x + rot;
-        motorPower[1] = y - x + rot;
-        motorPower[2] = y - x - rot;
-        motorPower[3] = y + x - rot;
-
-        double max = NumberUtil.max(motorPower);
-
-        if (max > 1) {
-            for (int i = 0; i < motorPower.length; i++) {
-                motorPower[i] /= max;
-            }
-        }
-
-        if(gamepad1.x) {
-            for(int i = 0; i < motorPower.length; i++) {
-                motorPower[i] *= -1.0d;
-            }
-        }
-
-        robot.dt.setPowers(motorPower);
-        robot.intake.updatePower();
+        robot.dt.updatePoseEstimate();
+        poseEstimate = robot.dt.getPoseEstimate();
 
         if(gamepad1.dpad_up && !oldGamepad1.dpad_up) {
             robot.launcher.setLauncherVelocity(Math.min(RingLauncher.LAUNCHER_VELOCITY + 0.01d, 1.0d));
@@ -153,12 +146,18 @@ public class BasicMecanumOp extends OpMode {
             robot.launcher.setLauncherVelocity(Math.max(RingLauncher.LAUNCHER_VELOCITY - 0.01d, 0.0d));
         }
 
+        if(!gamepad1.back) {
+            robot.intake.runForward();
+        } else {
+            robot.intake.runBackward();
+        }
+
         robot.launcher.updateVelocity();
 
         double v = robot.launcher.flywheelMotor.getVelocity();
-        double delta = Math.abs(robot.launcher.getTargetV() - v);
+        double targetV = robot.launcher.getTargetV();
 
-        if (gamepad1.a && delta <= 20) {
+        if (gamepad1.a && robot.launcher.isAtTargetVelocity()) {
             robot.launcher.setHammerPosition(ServoPosition.CLOSED);
         } else {
             robot.launcher.setHammerPosition(ServoPosition.OPEN);
@@ -168,21 +167,37 @@ public class BasicMecanumOp extends OpMode {
             robot.wobbleArm.toggleClaw();
         }
 
-        armPos = ServoPosition.MIDDLE;
+        armPos =
+                robot.wobbleArm != null && robot.wobbleArm.getArmPosition() != null ?
+                        robot.wobbleArm.getArmPosition() :
+                        ServoPosition.MIDDLE;
         if(gamepad1.b) armPos = ServoPosition.DOWN;
         if(gamepad1.y) armPos = ServoPosition.MIDDLE;
         if(gamepad1.left_bumper) armPos = ServoPosition.UP;
 
         robot.wobbleArm.setArmPosition(armPos);
 
+        robot.launcher.flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, LAUNCHER_PID);
+
+        telemetry.addData("TargetV", targetV);
+        telemetry.addData("LauncherV", v);
+        telemetry.addData("Status", "Rum Time: " + runtime.toString());
+
+        packet = new TelemetryPacket();
+
         // Show the elapsed game time and wheel power.
-        telemetry.addData("Status", "Run Time: " + runtime.toString());
-        telemetry.addData("Motors", "lf (%.2f) | rf (%.2f)", motorPower[0], motorPower[2]);
-        telemetry.addData("Motors", "lr (%.2f) | rr (%.2f)", motorPower[1], motorPower[3]);
-        telemetry.addData("LauncherV", "%.3f",
-                v);
-        dashboardTelemetry.addData("LauncherV", "%.3f",
-                v);
+        packet.put("Status", "Run Time: " + runtime.toString());
+        packet.put("x", poseEstimate.getX());
+        packet.put("y", poseEstimate.getY());
+        packet.put("heading", poseEstimate.getHeading());
+        packet.put("TargetV", String.valueOf(Math.round(targetV)));
+        packet.put("LauncherV", String.valueOf(Math.round(v)));
+
+        canvas = packet.fieldOverlay();
+
+        DashboardUtil.drawRobot(canvas, poseEstimate);
+
+        dashboard.sendTelemetryPacket(packet);
 
         try {
             oldGamepad1.copy(gamepad1);
@@ -190,7 +205,7 @@ public class BasicMecanumOp extends OpMode {
         } catch (RobotCoreException e) {
             telemetry.addData("GP ERROR", "Unable to copy gamepads");
         }
-        dashboardTelemetry.update();
+        telemetry.update();
     }
 
     /*

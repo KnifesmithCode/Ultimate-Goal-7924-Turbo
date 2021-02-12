@@ -9,8 +9,10 @@ import com.qualcomm.robotcore.hardware.Servo;
 @Config
 public class RingLauncher {
     // Static members to be used by the Dashboard
-    public static double LAUNCHER_VELOCITY = 0.89d;
+    public static double LAUNCHER_VELOCITY = 0.90d;
     public static double HAMMER_POS = 0.0d;
+
+    // FOR POWERSHOTS, a speed of approximately 1680 is good (0.84d)
 
     private static double COUNTS_PER_REVOLUTION = 145.6d;
     private static double MAX_RPS = 1150d / 60;
@@ -29,6 +31,8 @@ public class RingLauncher {
      * @param hardwareMap The HardwareMap given in the init() portion of the OpMode
      */
     public RingLauncher(HardwareMap hardwareMap) {
+        LAUNCHER_VELOCITY = 0.89d;
+
         // Initialize components of the ring launcher
         flywheelMotor = hardwareMap.get(DcMotorEx.class, "flywheel");
         hammerServo = hardwareMap.get(Servo.class, "hammer");
@@ -80,6 +84,10 @@ public class RingLauncher {
             default:
                 hammerServo.setPosition(0.0d);
         }
+    }
+
+    public boolean isAtTargetVelocity() {
+        return  Math.abs(getTargetV() - flywheelMotor.getVelocity()) <= 20;
     }
 
     public ServoPosition getHammerPosition() {

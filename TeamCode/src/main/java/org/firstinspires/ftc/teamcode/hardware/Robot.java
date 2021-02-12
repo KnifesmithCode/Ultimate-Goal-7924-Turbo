@@ -2,11 +2,14 @@ package org.firstinspires.ftc.teamcode.hardware;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.teamcode.roadrunner.hardware.RRMecanumDrivetrain;
+
 public class Robot {
-    public MecanumDrivetrain dt;
+    public RRMecanumDrivetrain dt;
     public RingLauncher launcher;
     public Intake intake;
     public WobbleArm wobbleArm;
+    public WobbleLatch wobbleLatch;
 
     /**
      * Create and initialize the robot from the HardwareMap
@@ -17,7 +20,7 @@ public class Robot {
      */
     public Robot(HardwareMap hardwareMap) {
         // Initialize the drivetrain
-        dt = new MecanumDrivetrain(hardwareMap);
+        dt = new RRMecanumDrivetrain(hardwareMap);
 
         // Initialize the launcher
         launcher = new RingLauncher(hardwareMap);
@@ -27,5 +30,8 @@ public class Robot {
 
         // Initialize the wobble goal arm
         wobbleArm = new WobbleArm(hardwareMap);
+
+        // Initialize the wobble goal latch
+        wobbleLatch = new WobbleLatch(hardwareMap);
     }
 }

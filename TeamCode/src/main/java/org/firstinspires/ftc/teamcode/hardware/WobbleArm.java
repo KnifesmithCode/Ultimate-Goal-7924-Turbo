@@ -21,6 +21,9 @@ public class WobbleArm {
     public WobbleArm(HardwareMap hardwareMap) {
         armServo = hardwareMap.get(Servo.class, "arm");
         clawServo = hardwareMap.get(Servo.class, "claw");
+
+        armPos = ServoPosition.UP;
+        clawPos = ServoPosition.OPEN;
     }
 
     public ServoPosition toggleClaw() {
@@ -59,14 +62,14 @@ public class WobbleArm {
     public void updateArmPosition() {
         switch (armPos) {
             case DOWN:
-                armServo.setPosition(0.9d);
+                armServo.setPosition(0.71d);
                 break;
             case MIDDLE:
-                armServo.setPosition(0.60d);
+                armServo.setPosition(0.32d);
                 break;
             default:
             case UP:
-                armServo.setPosition(0.2d);
+                armServo.setPosition(0.15d);
                 break;
         }
     }
@@ -74,11 +77,11 @@ public class WobbleArm {
     public void updateClawPosition() {
         switch (clawPos) {
             case CLOSED:
-                clawServo.setPosition(1.0d);
+                clawServo.setPosition(0.5d);
                 break;
             default:
             case OPEN:
-                clawServo.setPosition(0.4d);
+                clawServo.setPosition(0.0d);
                 break;
         }
     }

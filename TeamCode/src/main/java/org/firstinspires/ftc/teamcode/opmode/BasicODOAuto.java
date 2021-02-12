@@ -1,12 +1,14 @@
 package org.firstinspires.ftc.teamcode.opmode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
 import org.firstinspires.ftc.teamcode.hardware.Robot;
 
+@Disabled
 @Autonomous(name="Basic ODO", group="Autonomous")
 public class BasicODOAuto extends LinearOpMode {
     // ODO Wheel Diameter
@@ -17,6 +19,7 @@ public class BasicODOAuto extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
+        /*
         robot = new Robot(hardwareMap);
 
         for(DcMotorEx motor : robot.dt.motors) {
@@ -29,6 +32,7 @@ public class BasicODOAuto extends LinearOpMode {
         while(opModeIsActive()) {
 
         }
+         */
     }
 
     private void moveForward(double inches) {
