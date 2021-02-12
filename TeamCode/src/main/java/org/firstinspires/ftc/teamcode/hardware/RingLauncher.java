@@ -79,12 +79,12 @@ public class RingLauncher {
      */
     public void setHammerPosition(AccessoryPosition pos) {
         switch (pos) {
-            case CLOSED:
+            case ENGAGED:
                 hammerServo.setPosition(0.45d);
                 break;
-            case OPEN:
+            case DISENGAGED:
             default:
-                hammerServo.setPosition(0.0d);
+                hammerServo.setPosition(0.1d);
         }
     }
 

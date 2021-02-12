@@ -22,4 +22,8 @@ public class Intake {
         intakeMotor.setPower(-1.0d);
     }
 
+    public void stop() {
+        intakeMotor.setPower(0.0d);
+    }
+
 }

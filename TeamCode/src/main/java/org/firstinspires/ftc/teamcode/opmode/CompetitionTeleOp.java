@@ -68,20 +68,26 @@ import org.firstinspires.ftc.teamcode.util.PoseStorage;
 public class CompetitionTeleOp extends OpMode {
     public static PIDFCoefficients LAUNCHER_PID = new PIDFCoefficients();
 
+    private enum State {
+        DRIVER_CONTROL, AUTO_POWERSHOT
+    }
+
     // Declare OpMode members.
     private final ElapsedTime runtime = new ElapsedTime();
     Robot robot;
 
-    AccessoryPosition armPos = AccessoryPosition.MIDDLE;
+    State currentState;
 
-    Gamepad oldGamepad1 = new Gamepad();
-    Gamepad oldGamepad2 = new Gamepad();
+    Pose2d poseEstimate;
+
+    AccessoryPosition armPos = AccessoryPosition.MIDDLE;
 
     FtcDashboard dashboard;
     TelemetryPacket packet;
     Canvas canvas;
 
-    Pose2d poseEstimate;
+    Gamepad oldGamepad1 = new Gamepad();
+    Gamepad oldGamepad2 = new Gamepad();
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -101,6 +107,7 @@ public class CompetitionTeleOp extends OpMode {
 
         robot.dt.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         robot.dt.setPoseEstimate(PoseStorage.POSE);
+        currentState = State.DRIVER_CONTROL;
 
         LAUNCHER_PID = robot.launcher.flywheelMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER);
 
@@ -128,6 +135,8 @@ public class CompetitionTeleOp extends OpMode {
      */
     @Override
     public void loop() {
+        //#region Drivetrain
+        // Send power to drivetrain (using Roadrunner)
         robot.dt.setWeightedDrivePower(
                 new Pose2d(
                         -gamepad1.left_stick_y,
@@ -136,34 +145,50 @@ public class CompetitionTeleOp extends OpMode {
                 )
         );
 
+        // Update the pose information for the robot, based on the odometry pods
         robot.dt.updatePoseEstimate();
         poseEstimate = robot.dt.getPoseEstimate();
+        //#endregion
 
-        if(gamepad1.dpad_up && !oldGamepad1.dpad_up) {
+        //#region Launcher
+        // Allow adjustment of the launcher velocity based on user feedback
+        if (gamepad1.dpad_up && !oldGamepad1.dpad_up) {
             robot.launcher.setLauncherVelocity(Math.min(RingLauncher.LAUNCHER_VELOCITY + 0.01d, 1.0d));
         }
-        if(gamepad1.dpad_down && !oldGamepad1.dpad_down) {
+        if (gamepad1.dpad_down && !oldGamepad1.dpad_down) {
             robot.launcher.setLauncherVelocity(Math.max(RingLauncher.LAUNCHER_VELOCITY - 0.01d, 0.0d));
-        }
-
-        if(!gamepad1.back) {
-            robot.intake.runForward();
-        } else {
-            robot.intake.runBackward();
         }
 
         robot.launcher.updateVelocity();
 
+        // Launch rings if the launcher is at target velocity
+        if (gamepad1.a && robot.launcher.isAtTargetVelocity()) {
+            robot.launcher.setHammerPosition(AccessoryPosition.ENGAGED);
+        } else {
+            robot.launcher.setHammerPosition(AccessoryPosition.DISENGAGED);
+        }
+
+        // Store velocity values to report back to telemetry
         double v = robot.launcher.flywheelMotor.getVelocity();
         double targetV = robot.launcher.getTargetV();
 
-        if (gamepad1.a && robot.launcher.isAtTargetVelocity()) {
-            robot.launcher.setHammerPosition(AccessoryPosition.CLOSED);
-        } else {
-            robot.launcher.setHammerPosition(AccessoryPosition.OPEN);
-        }
+        // Set PIDF coefficients for the flywheel motor
+        robot.launcher.flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, LAUNCHER_PID);
+        //#endregion
 
-        if(gamepad1.right_bumper && !oldGamepad1.right_bumper) {
+        //#region Intake
+        // Run the intake backward if the back button is pressed
+        // This is useful for stuck rings, or for cases of carrying four rings
+        if (!gamepad1.back) {
+            robot.intake.runForward();
+        } else {
+            robot.intake.runBackward();
+        }
+        //#endregion
+
+        //#region Wobble Arm
+        // Open or close the claw with the right bumper
+        if (gamepad1.right_bumper && !oldGamepad1.right_bumper) {
             robot.wobbleArm.toggleClaw();
         }
 
@@ -171,21 +196,28 @@ public class CompetitionTeleOp extends OpMode {
                 robot.wobbleArm != null && robot.wobbleArm.getArmPosition() != null ?
                         robot.wobbleArm.getArmPosition() :
                         AccessoryPosition.MIDDLE;
-        if(gamepad1.b) armPos = AccessoryPosition.DOWN;
-        if(gamepad1.y) armPos = AccessoryPosition.MIDDLE;
-        if(gamepad1.left_bumper) armPos = AccessoryPosition.UP;
+        if (gamepad1.b) {
+            armPos = AccessoryPosition.DOWN;
+        } else if (gamepad1.y) {
+            armPos = AccessoryPosition.MIDDLE;
+        } else if (gamepad1.left_bumper) {
+            armPos = AccessoryPosition.UP;
+        }
 
-        robot.wobbleArm.setArmPosition(armPos);
+        // While I cannot imagine wobbleArm being null, Android Studio certainly can
+        // Check to make sure that wobbleArm has been initialized
+        if(robot.wobbleArm != null) robot.wobbleArm.setArmPosition(armPos);
+        //#endregion
 
-        robot.launcher.flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, LAUNCHER_PID);
-
+        //#region Driver Station telemetry
         telemetry.addData("TargetV", targetV);
         telemetry.addData("LauncherV", v);
         telemetry.addData("Status", "Rum Time: " + runtime.toString());
+        //#endregion
 
+        //#region Dashboard telemetry
         packet = new TelemetryPacket();
 
-        // Show the elapsed game time and wheel power.
         packet.put("Status", "Run Time: " + runtime.toString());
         packet.put("x", poseEstimate.getX());
         packet.put("y", poseEstimate.getY());
@@ -193,18 +225,21 @@ public class CompetitionTeleOp extends OpMode {
         packet.put("TargetV", String.valueOf(Math.round(targetV)));
         packet.put("LauncherV", String.valueOf(Math.round(v)));
 
+        // Allow the dashboard to show the robot position
         canvas = packet.fieldOverlay();
-
         DashboardUtil.drawRobot(canvas, poseEstimate);
 
         dashboard.sendTelemetryPacket(packet);
+        //#endregion
 
+        // Used to detect a button press vs a button hold
         try {
             oldGamepad1.copy(gamepad1);
             oldGamepad2.copy(gamepad2);
         } catch (RobotCoreException e) {
             telemetry.addData("GP ERROR", "Unable to copy gamepads");
         }
+
         telemetry.update();
     }
 

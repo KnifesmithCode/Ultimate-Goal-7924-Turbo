@@ -12,6 +12,8 @@ public class WobbleArm {
     public static double ARM_POS = 0.0d;
     public static double CLAW_POS = 0.0d;
 
+    private static final int TICKS_PER_REVOLUTION = 1680;
+
     // Arm values: 0.2 to 1.0
     // Claw values: 0.2 to 0.85
 
@@ -67,14 +69,14 @@ public class WobbleArm {
     private void updateArmPosition() {
         switch (armPos) {
             case DOWN:
-                armMotor.setTargetPosition(-840);
+                armMotor.setTargetPosition(-5 * TICKS_PER_REVOLUTION / 8);
                 break;
             case MIDDLE:
-                armMotor.setTargetPosition(0);
+                armMotor.setTargetPosition(-1 * TICKS_PER_REVOLUTION / 8);
                 break;
             default:
             case UP:
-                armMotor.setTargetPosition(210);
+                armMotor.setTargetPosition(0);
                 break;
         }
         armMotor.setPower(0.8d);
