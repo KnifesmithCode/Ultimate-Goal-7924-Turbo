@@ -13,8 +13,8 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.hardware.Robot;
-import org.firstinspires.ftc.teamcode.util.AccessoryPosition;
 import org.firstinspires.ftc.teamcode.roadrunner.util.LynxModuleUtil;
+import org.firstinspires.ftc.teamcode.util.AccessoryPosition;
 import org.firstinspires.ftc.teamcode.util.PoseStorage;
 import org.firstinspires.ftc.teamcode.util.RingsPipeline;
 import org.openftc.easyopencv.OpenCvCamera;
@@ -24,14 +24,16 @@ import org.openftc.easyopencv.OpenCvInternalCamera2;
 
 @Config
 @Autonomous(name = "RR Auto Blue", group = "Autonomous")
+@SuppressWarnings("unused")
 public class RRAutoBlue extends LinearOpMode {
     public static boolean PREVIEW = true;
 
-    private ElapsedTime runtime;
     private Robot robot;
 
     @Override
-    public void runOpMode() throws InterruptedException {
+    public void runOpMode() {
+        ElapsedTime runtime;
+
         try {
             robot = new Robot(hardwareMap);
         } catch (LynxModuleUtil.LynxFirmwareVersionException e) {
@@ -97,7 +99,7 @@ public class RRAutoBlue extends LinearOpMode {
                 break;
             case ONE:
                 // B
-                wobblePoint = new Vector2d(42.0, wobbleY - 24.0);
+                wobblePoint = new Vector2d(40.0, wobbleY - 24.0);
                 break;
             case FOUR:
                 // C
@@ -114,23 +116,24 @@ public class RRAutoBlue extends LinearOpMode {
 
         // Get to shooting position
         Trajectory traj2 = robot.dt.trajectoryBuilder(traj1.end(), Math.toRadians(180.0))
-                .splineTo(new Vector2d(-8.0, 30.0), Math.toRadians(180.0))
+                .splineTo(new Vector2d(-8.0, 34.0), Math.toRadians(180.0))
                 .build();
 
         // Go to grab second wobble goal
         Trajectory traj3 = robot.dt.trajectoryBuilder(traj2.end(), Math.toRadians(180.0))
-                .splineToSplineHeading(new Pose2d(-30.0, 24.0, Math.toRadians(5.0)), Math.toRadians(5.0))
+                .splineToSplineHeading(new Pose2d(-24.0, 24.0, Math.toRadians(-90.0)), Math.toRadians(-90.0))
+                .splineToConstantHeading(new Vector2d(-32.0, 24.0), Math.toRadians(-90.0))
                 .build();
 
-        Vector2d secondWobblePoint = new Vector2d(wobblePoint.getX() - 8.0, wobblePoint.getY() - 6.0);
+        Vector2d secondWobblePoint = new Vector2d(wobblePoint.getX() - 8.0, wobblePoint.getY() - 8.0);
 
         // Drop off second wobble goal
-        Trajectory traj4 = robot.dt.trajectoryBuilder(traj3.end(), Math.toRadians(5.0))
-                .splineToSplineHeading(new Pose2d(secondWobblePoint, Math.toRadians(270.0)), Math.toRadians(270.0))
+        Trajectory traj4 = robot.dt.trajectoryBuilder(traj3.end(), Math.toRadians(-90.0))
+                .splineToSplineHeading(new Pose2d(secondWobblePoint, Math.toRadians(-180.0)), Math.toRadians(-180.0))
                 .build();
 
         // Park on line
-        Trajectory traj5 = robot.dt.trajectoryBuilder(traj4.end(), Math.toRadians(270.0))
+        Trajectory traj5 = robot.dt.trajectoryBuilder(traj4.end(), Math.toRadians(-180.0))
                 .splineToSplineHeading(new Pose2d(10.0, 16.0, Math.toRadians(0.0)), Math.toRadians(0.0))
                 .build();
 
@@ -151,15 +154,15 @@ public class RRAutoBlue extends LinearOpMode {
         telemetry.update();
 
         for (int i = 0; i < 3; i++) {
-            robot.launcher.setHammerPosition(AccessoryPosition.CLOSED);
+            robot.launcher.setHammerPosition(AccessoryPosition.ENGAGED);
             sleep(750);
-            robot.launcher.setHammerPosition(AccessoryPosition.OPEN);
-            if(i < 2) {
+            robot.launcher.setHammerPosition(AccessoryPosition.DISENGAGED);
+            if (i < 2) {
                 sleep(2000);
             }
         }
 
-        robot.wobbleArm.setArmPosition(AccessoryPosition.MIDDLE);
+        robot.wobbleArm.setArmPosition(AccessoryPosition.DOWN);
         robot.wobbleArm.setClawPosition(AccessoryPosition.OPEN);
 
         telemetry.addData("Status", "Following traj3");
@@ -167,10 +170,8 @@ public class RRAutoBlue extends LinearOpMode {
 
         robot.dt.followTrajectory(traj3);
 
-        robot.wobbleArm.setArmPosition(AccessoryPosition.DOWN);
-        sleep(2000);
         robot.wobbleArm.setClawPosition(AccessoryPosition.CLOSED);
-        sleep(500);
+        sleep(1000);
         robot.wobbleArm.setArmPosition(AccessoryPosition.MIDDLE);
         sleep(500);
 
@@ -182,7 +183,12 @@ public class RRAutoBlue extends LinearOpMode {
         robot.wobbleArm.setArmPosition(AccessoryPosition.DOWN);
         sleep(500);
         robot.wobbleArm.setClawPosition(AccessoryPosition.OPEN);
-        sleep(500);
+        sleep(1000);
+        robot.wobbleArm.setArmPosition(AccessoryPosition.MIDDLE);
+        while (robot.wobbleArm.armMotor.isBusy() && opModeIsActive()) {
+            telemetry.addData("Status", "Waiting for arm");
+            telemetry.update();
+        }
 
         telemetry.addData("Status", "Following traj5");
         telemetry.update();
@@ -190,6 +196,10 @@ public class RRAutoBlue extends LinearOpMode {
         robot.dt.followTrajectory(traj5);
 
         robot.wobbleArm.setArmPosition(AccessoryPosition.UP);
+        while (robot.wobbleArm.armMotor.isBusy() && opModeIsActive()) {
+            telemetry.addData("Status", "Waiting for arm");
+            telemetry.update();
+        }
 
         PoseStorage.POSE = robot.dt.getPoseEstimate();
         stop();
