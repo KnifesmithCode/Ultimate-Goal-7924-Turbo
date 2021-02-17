@@ -73,9 +73,9 @@ public class RingLauncher {
     }
 
     /**
-     * Does what it says on the tin (open is not shooting; closed is shooting)
+     * Does what it says on the tin
      *
-     * @param pos An enum for position (either HammerPosition.OPEN or HammerPosition.CLOSED)
+     * @param pos An enum for position (either HammerPosition.ENGAGED or HammerPosition.DISENGAGED)
      */
     public void setHammerPosition(AccessoryPosition pos) {
         switch (pos) {
@@ -84,7 +84,7 @@ public class RingLauncher {
                 break;
             case DISENGAGED:
             default:
-                hammerServo.setPosition(0.1d);
+                hammerServo.setPosition(0.15d);
         }
     }
 
