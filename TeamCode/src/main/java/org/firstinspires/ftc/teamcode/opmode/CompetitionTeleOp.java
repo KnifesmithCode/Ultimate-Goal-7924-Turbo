@@ -63,13 +63,12 @@ import org.firstinspires.ftc.teamcode.util.PoseStorage;
  */
 
 @TeleOp(name = "Competition TeleOP", group = "TeleOp")
-// @Disabled
 @Config
 public class CompetitionTeleOp extends OpMode {
     public static PIDFCoefficients LAUNCHER_PID = new PIDFCoefficients();
 
     private enum State {
-        DRIVER_CONTROL, AUTO_POWERSHOT
+        DRIVER_CONTROL, AUTO_AIMING, AUTO_POWERSHOT
     }
 
     // Declare OpMode members.
@@ -135,90 +134,103 @@ public class CompetitionTeleOp extends OpMode {
      */
     @Override
     public void loop() {
-        //#region Drivetrain
-        // Send power to drivetrain (using Roadrunner)
-        robot.dt.setWeightedDrivePower(
-                new Pose2d(
-                        -gamepad1.left_stick_y,
-                        -gamepad1.left_stick_x,
-                        -gamepad1.right_stick_x
-                )
-        );
+        double targetV = 0;
+        double v = 0;
+        switch(currentState) {
+            case DRIVER_CONTROL:
+            default:
+                //#region Drivetrain
+                // Send power to drivetrain (using Roadrunner)
+                robot.dt.setWeightedDrivePower(
+                        new Pose2d(
+                                -gamepad1.left_stick_y,
+                                -gamepad1.left_stick_x,
+                                -gamepad1.right_stick_x
+                        )
+                );
 
-        // Update the pose information for the robot, based on the odometry pods
-        robot.dt.updatePoseEstimate();
-        poseEstimate = robot.dt.getPoseEstimate();
-        //#endregion
+                // Update the pose information for the robot, based on the odometry pods
+                robot.dt.updatePoseEstimate();
+                poseEstimate = robot.dt.getPoseEstimate();
+                //#endregion
 
-        //#region Launcher
-        // Allow adjustment of the launcher velocity based on user feedback
-        if (gamepad1.dpad_up && !oldGamepad1.dpad_up) {
-            robot.launcher.setLauncherVelocity(Math.min(RingLauncher.LAUNCHER_VELOCITY + 0.01d, 1.0d));
+                //#region Launcher
+                // Allow adjustment of the launcher velocity based on user feedback
+                if (gamepad1.dpad_up && !oldGamepad1.dpad_up) {
+                    robot.launcher.setLauncherVelocity(Math.min(RingLauncher.LAUNCHER_VELOCITY + 0.01d, 1.0d));
+                }
+                if (gamepad1.dpad_down && !oldGamepad1.dpad_down) {
+                    robot.launcher.setLauncherVelocity(Math.max(RingLauncher.LAUNCHER_VELOCITY - 0.01d, 0.0d));
+                }
+
+                robot.launcher.updateVelocity();
+
+                // Launch rings if the launcher is at target velocity
+                if (gamepad1.a && robot.launcher.isAtTargetVelocity()) {
+                    robot.launcher.setHammerPosition(AccessoryPosition.ENGAGED);
+                } else {
+                    robot.launcher.setHammerPosition(AccessoryPosition.DISENGAGED);
+                }
+
+                // Store velocity values to report back to telemetry
+                v = robot.launcher.flywheelMotor.getVelocity();
+                targetV = robot.launcher.getTargetV();
+
+                // Set PIDF coefficients for the flywheel motor
+                robot.launcher.flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, LAUNCHER_PID);
+                //#endregion
+
+                //#region Intake
+                // Run the intake backward if the back button is pressed
+                // This is useful for stuck rings, or for cases of carrying four rings
+                if (!gamepad1.back) {
+                    robot.intake.runForward();
+                } else {
+                    robot.intake.runBackward();
+                }
+                //#endregion
+
+                //#region Wobble Arm
+                // Open or close the claw with the right bumper
+                if (gamepad1.right_bumper && !oldGamepad1.right_bumper) {
+                    robot.wobbleArm.toggleClaw();
+                }
+
+                armPos =
+                        robot.wobbleArm != null && robot.wobbleArm.getArmPosition() != null ?
+                                robot.wobbleArm.getArmPosition() :
+                                AccessoryPosition.MIDDLE;
+                if (gamepad1.b) {
+                    armPos = AccessoryPosition.DOWN;
+                } else if (gamepad1.y) {
+                    armPos = AccessoryPosition.MIDDLE;
+                } else if (gamepad1.left_bumper) {
+                    armPos = AccessoryPosition.UP;
+                }
+
+                // While I cannot imagine wobbleArm being null, Android Studio certainly can
+                // Check to make sure that wobbleArm has been initialized
+                if(robot.wobbleArm != null) robot.wobbleArm.setArmPosition(armPos);
+                //#endregion
+                break;
+            case AUTO_AIMING:
+                //TODO: Automatically aim the robot when requested
+                break;
+            case AUTO_POWERSHOT:
+                //TODO: Automatically hit the powershots when requested
+                break;
         }
-        if (gamepad1.dpad_down && !oldGamepad1.dpad_down) {
-            robot.launcher.setLauncherVelocity(Math.max(RingLauncher.LAUNCHER_VELOCITY - 0.01d, 0.0d));
-        }
-
-        robot.launcher.updateVelocity();
-
-        // Launch rings if the launcher is at target velocity
-        if (gamepad1.a && robot.launcher.isAtTargetVelocity()) {
-            robot.launcher.setHammerPosition(AccessoryPosition.ENGAGED);
-        } else {
-            robot.launcher.setHammerPosition(AccessoryPosition.DISENGAGED);
-        }
-
-        // Store velocity values to report back to telemetry
-        double v = robot.launcher.flywheelMotor.getVelocity();
-        double targetV = robot.launcher.getTargetV();
-
-        // Set PIDF coefficients for the flywheel motor
-        robot.launcher.flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, LAUNCHER_PID);
-        //#endregion
-
-        //#region Intake
-        // Run the intake backward if the back button is pressed
-        // This is useful for stuck rings, or for cases of carrying four rings
-        if (!gamepad1.back) {
-            robot.intake.runForward();
-        } else {
-            robot.intake.runBackward();
-        }
-        //#endregion
-
-        //#region Wobble Arm
-        // Open or close the claw with the right bumper
-        if (gamepad1.right_bumper && !oldGamepad1.right_bumper) {
-            robot.wobbleArm.toggleClaw();
-        }
-
-        armPos =
-                robot.wobbleArm != null && robot.wobbleArm.getArmPosition() != null ?
-                        robot.wobbleArm.getArmPosition() :
-                        AccessoryPosition.MIDDLE;
-        if (gamepad1.b) {
-            armPos = AccessoryPosition.DOWN;
-        } else if (gamepad1.y) {
-            armPos = AccessoryPosition.MIDDLE;
-        } else if (gamepad1.left_bumper) {
-            armPos = AccessoryPosition.UP;
-        }
-
-        // While I cannot imagine wobbleArm being null, Android Studio certainly can
-        // Check to make sure that wobbleArm has been initialized
-        if(robot.wobbleArm != null) robot.wobbleArm.setArmPosition(armPos);
-        //#endregion
 
         //#region Driver Station telemetry
+        telemetry.addData("State", currentState.name());
         telemetry.addData("TargetV", targetV);
         telemetry.addData("LauncherV", v);
-        telemetry.addData("Status", "Rum Time: " + runtime.toString());
         //#endregion
 
         //#region Dashboard telemetry
         packet = new TelemetryPacket();
 
-        packet.put("Status", "Run Time: " + runtime.toString());
+        packet.put("State", currentState.name());
         packet.put("x", poseEstimate.getX());
         packet.put("y", poseEstimate.getY());
         packet.put("heading", poseEstimate.getHeading());
