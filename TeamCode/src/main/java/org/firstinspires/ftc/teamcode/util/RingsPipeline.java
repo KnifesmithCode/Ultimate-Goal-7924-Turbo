@@ -11,13 +11,17 @@ import org.openftc.easyopencv.OpenCvPipeline;
 
 @Config
 public class RingsPipeline extends OpenCvPipeline {
+    public enum RingQuantity {
+        ZERO, ONE, FOUR
+    }
+
     public RingQuantity qty;
 
     Mat hsv = new Mat();
     Mat mask = new Mat();
     Mat disp = new Mat();
 
-    public static int RECT_X = 350;
+    public static int RECT_X = 300;
 
     public static int RECT1_Y = 280;
     public static int RECT2_Y = 250;
@@ -42,10 +46,10 @@ public class RingsPipeline extends OpenCvPipeline {
         Imgproc.cvtColor(input, hsv, Imgproc.COLOR_RGB2HSV);
         Core.inRange(hsv, new Scalar(HMIN, SMIN, VMIN), new Scalar(HMAX, SMAX, VMAX), mask);
 
-        Rect bottomRect = new Rect(RECT_X, RECT1_Y, 10, 10);
+        Rect bottomRect = new Rect(RECT_X, RECT1_Y, 100, 10);
         double bottomAvg = Core.mean(new Mat(mask, bottomRect)).val[0];
 
-        Rect topRect = new Rect(RECT_X, RECT2_Y, 10, 10);
+        Rect topRect = new Rect(RECT_X, RECT2_Y, 100, 10);
         double topAvg = Core.mean(new Mat(mask, topRect)).val[0];
 
         Imgproc.cvtColor(mask, disp, Imgproc.COLOR_GRAY2RGB);
