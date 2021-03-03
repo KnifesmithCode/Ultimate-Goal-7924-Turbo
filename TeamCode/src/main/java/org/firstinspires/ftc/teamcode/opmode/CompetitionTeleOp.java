@@ -34,6 +34,8 @@ import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.geometry.Vector2d;
+import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.exception.RobotCoreException;
@@ -42,11 +44,13 @@ import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.hardware.RingLauncher;
 import org.firstinspires.ftc.teamcode.hardware.Robot;
 import org.firstinspires.ftc.teamcode.util.AccessoryPosition;
-import org.firstinspires.ftc.teamcode.util.DashboardUtil;
 import org.firstinspires.ftc.teamcode.util.PoseStorage;
+
+import java.util.ArrayList;
 
 /**
  * This file contains an example of an iterative (Non-Linear) "OpMode".
@@ -65,8 +69,6 @@ import org.firstinspires.ftc.teamcode.util.PoseStorage;
 @TeleOp(name = "Competition TeleOP", group = "TeleOp")
 @Config
 public class CompetitionTeleOp extends OpMode {
-    public static PIDFCoefficients LAUNCHER_PID = new PIDFCoefficients();
-
     private enum State {
         DRIVER_CONTROL, AUTO_AIMING, AUTO_POWERSHOT
     }
@@ -75,6 +77,8 @@ public class CompetitionTeleOp extends OpMode {
     private final ElapsedTime runtime = new ElapsedTime();
     Robot robot;
 
+    double lastShot = 0;
+
     State currentState;
 
     Pose2d poseEstimate;
@@ -82,8 +86,12 @@ public class CompetitionTeleOp extends OpMode {
     AccessoryPosition armPos = AccessoryPosition.MIDDLE;
 
     FtcDashboard dashboard;
-    TelemetryPacket packet;
-    Canvas canvas;
+
+    ArrayList<Trajectory> powershotTrajectories = new ArrayList<>();
+    private int powershotStep = 0;
+    private double powershotTime = 0d;
+
+    private double lastJam = 0d;
 
     Gamepad oldGamepad1 = new Gamepad();
     Gamepad oldGamepad2 = new Gamepad();
@@ -108,7 +116,15 @@ public class CompetitionTeleOp extends OpMode {
         robot.dt.setPoseEstimate(PoseStorage.POSE);
         currentState = State.DRIVER_CONTROL;
 
-        LAUNCHER_PID = robot.launcher.flywheelMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER);
+        powershotTrajectories.add(
+                robot.dt.trajectoryBuilder(PoseStorage.POWERSHOT_POSE, PoseStorage.POWERSHOT_POSE.getHeading())
+                        .strafeTo(new Vector2d(0.0D, -2.0D)).build());
+        powershotTrajectories.add(
+                robot.dt.trajectoryBuilder(powershotTrajectories.get(0).end(), Math.toRadians(powershotTrajectories.get(0).end().getHeading()))
+                        .strafeTo(new Vector2d(0.0D, 5.5D)).build());
+        powershotTrajectories.add(
+                robot.dt.trajectoryBuilder(powershotTrajectories.get(1).end(), Math.toRadians(powershotTrajectories.get(1).end().getHeading()))
+                        .strafeTo(new Vector2d(0.0D, 13.0D)).build());
 
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
@@ -136,22 +152,19 @@ public class CompetitionTeleOp extends OpMode {
     public void loop() {
         double targetV = 0;
         double v = 0;
-        switch(currentState) {
+        switch (currentState) {
             case DRIVER_CONTROL:
             default:
                 //#region Drivetrain
                 // Send power to drivetrain (using Roadrunner)
+                double speedMultiplier = 1 - (gamepad1.left_trigger * 0.7);
                 robot.dt.setWeightedDrivePower(
                         new Pose2d(
-                                -gamepad1.left_stick_y,
-                                -gamepad1.left_stick_x,
-                                -gamepad1.right_stick_x
+                                -gamepad1.left_stick_y * speedMultiplier,
+                                -gamepad1.left_stick_x * speedMultiplier,
+                                -gamepad1.right_stick_x * speedMultiplier
                         )
                 );
-
-                // Update the pose information for the robot, based on the odometry pods
-                robot.dt.updatePoseEstimate();
-                poseEstimate = robot.dt.getPoseEstimate();
                 //#endregion
 
                 //#region Launcher
@@ -163,28 +176,44 @@ public class CompetitionTeleOp extends OpMode {
                     robot.launcher.setLauncherVelocity(Math.max(RingLauncher.LAUNCHER_VELOCITY - 0.01d, 0.0d));
                 }
 
+                // Allow the usage of gamepad2 to change the target of the launcher
+                if (gamepad2.a) {
+                    robot.launcher.setTarget(RingLauncher.Target.TOWER_TELEOP);
+                } else if (gamepad2.b) {
+                    robot.launcher.setTarget(RingLauncher.Target.POWERSHOT);
+                }
+
                 robot.launcher.updateVelocity();
 
                 // Launch rings if the launcher is at target velocity
-                if (gamepad1.a && robot.launcher.isAtTargetVelocity()) {
-                    robot.launcher.setHammerPosition(AccessoryPosition.ENGAGED);
+                if (gamepad1.a) {
+                    if (robot.launcher.isAtTargetVelocity()) {
+                        robot.launcher.setHammerPosition(AccessoryPosition.ENGAGED);
+                        lastShot = runtime.milliseconds();
+                    }
                 } else {
                     robot.launcher.setHammerPosition(AccessoryPosition.DISENGAGED);
                 }
 
                 // Store velocity values to report back to telemetry
-                v = robot.launcher.flywheelMotor.getVelocity();
                 targetV = robot.launcher.getTargetV();
-
-                // Set PIDF coefficients for the flywheel motor
-                robot.launcher.flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, LAUNCHER_PID);
                 //#endregion
 
                 //#region Intake
-                // Run the intake backward if the back button is pressed
-                // This is useful for stuck rings, or for cases of carrying four rings
-                if (!gamepad1.back) {
-                    robot.intake.runForward();
+                /* Run the intake backward if the back button is pressed
+                   This is useful for stuck rings, or for cases of carrying four rings
+                   In addition, if the motor is drawing over seven amps (a fair number)
+                   then reverse the motor, because it must be jammed.
+                 */
+                if (!gamepad1.back && robot.intake.intakeMotor.getCurrent(CurrentUnit.AMPS) < 7.0d) {
+                    if (robot.intake.intakeMotor.getCurrent(CurrentUnit.AMPS) > 7.0d) {
+                        lastJam = runtime.milliseconds();
+                    }
+                    if (runtime.milliseconds() - lastJam < 250d) {
+                        robot.intake.runBackward();
+                    } else {
+                        robot.intake.runForward();
+                    }
                 } else {
                     robot.intake.runBackward();
                 }
@@ -196,10 +225,12 @@ public class CompetitionTeleOp extends OpMode {
                     robot.wobbleArm.toggleClaw();
                 }
 
+                // Set the wobble arm position based on where it is currently (null-safe)
                 armPos =
                         robot.wobbleArm != null && robot.wobbleArm.getArmPosition() != null ?
                                 robot.wobbleArm.getArmPosition() :
                                 AccessoryPosition.MIDDLE;
+                // User control of the wobble arm position
                 if (gamepad1.b) {
                     armPos = AccessoryPosition.DOWN;
                 } else if (gamepad1.y) {
@@ -210,38 +241,102 @@ public class CompetitionTeleOp extends OpMode {
 
                 // While I cannot imagine wobbleArm being null, Android Studio certainly can
                 // Check to make sure that wobbleArm has been initialized
-                if(robot.wobbleArm != null) robot.wobbleArm.setArmPosition(armPos);
+                if (robot.wobbleArm != null) robot.wobbleArm.setArmPosition(armPos);
+                //#endregion
+
+                //#region Macros & Misc.
+                // Automatic shooting positioning macro
+                if (gamepad1.dpad_right) {
+                    // Calculate a trajectory to the shooting pose
+                    // TODO: Do this on another thread for slight speed increases
+                    Trajectory traj = robot.dt.trajectoryBuilder(poseEstimate)
+                            .splineToLinearHeading(
+                                    PoseStorage.SHOOTING_POSE,
+                                    Math.toRadians(180.0))
+                            .build();
+
+                    // Follow the given trajectory
+                    robot.dt.followTrajectoryAsync(traj);
+
+                    currentState = State.AUTO_AIMING;
+                }
+
+                // Autmatic powershot macro
+                if (gamepad2.y) {
+                    // Start from powershot step zero
+                    powershotStep = 0;
+
+                    // Update the launcher to target powershots
+                    robot.launcher.setTarget(RingLauncher.Target.POWERSHOT);
+                    robot.launcher.updateVelocity();
+
+                    // Set the PoseEstimate to a constant (POWERSHOT_POSE; along the east wall)
+                    robot.dt.setPoseEstimate(PoseStorage.POWERSHOT_POSE);
+                    // Begin following the trajectory
+                    robot.dt.followTrajectoryAsync(powershotTrajectories.get(powershotStep));
+
+                    currentState = State.AUTO_POWERSHOT;
+                }
+
+                // Reset the robot's current position to the shooting pose
+                // Used when the robot makes a shot and
+                if (gamepad2.x) {
+                    robot.dt.setPoseEstimate(PoseStorage.SHOOTING_POSE);
+                }
                 //#endregion
                 break;
             case AUTO_AIMING:
-                //TODO: Automatically aim the robot when requested
+                if (robot.dt.isBusy()) {
+                    telemetry.addData("Auto-Aim", "Pathing to shooting position...");
+                    // Run the intake backward while automatically aiming so that we do not intake a fourth ring
+                    robot.intake.runBackward();
+                } else {
+                    // Once the robot is done, return control to the driver
+                    currentState = State.DRIVER_CONTROL;
+                }
                 break;
             case AUTO_POWERSHOT:
-                //TODO: Automatically hit the powershots when requested
+                if (robot.dt.isBusy()) {
+                    telemetry.addData("Auto-PS", "Pathing to powershots");
+                } else {
+                    // Check if it has been enough time since a ring was launched
+                    if (powershotTime == 0d) {
+                        // Launch a ring and set the last ring launch time
+                        robot.launcher.setHammerPosition(AccessoryPosition.ENGAGED);
+                        powershotTime = runtime.milliseconds();
+                    } else {
+                        // Wait for 0.75s so that a ring launches properly
+                        // If it has been enough time, go to the next powershot
+                        if (runtime.milliseconds() - powershotTime > 750) {
+                            robot.launcher.setHammerPosition(AccessoryPosition.DISENGAGED);
+                            if (powershotStep < 2) {
+                                // Go to the next powershot
+                                powershotTime = 0d;
+                                powershotStep++;
+                                robot.dt.followTrajectoryAsync(powershotTrajectories.get(powershotStep));
+                            } else {
+                                // Reset the powershot status
+                                powershotTime = 0;
+                                // Return control to the driver
+                                robot.launcher.setTarget(RingLauncher.Target.TOWER_TELEOP);
+                                currentState = State.DRIVER_CONTROL;
+                            }
+                        }
+                    }
+                }
                 break;
         }
+
+        // Update the drivetrain for the robot
+        robot.dt.update();
+        // Get the Pose estimate, which is created by the odometry pods
+        poseEstimate = robot.dt.getPoseEstimate();
 
         //#region Driver Station telemetry
         telemetry.addData("State", currentState.name());
         telemetry.addData("TargetV", targetV);
         telemetry.addData("LauncherV", v);
-        //#endregion
-
-        //#region Dashboard telemetry
-        packet = new TelemetryPacket();
-
-        packet.put("State", currentState.name());
-        packet.put("x", poseEstimate.getX());
-        packet.put("y", poseEstimate.getY());
-        packet.put("heading", poseEstimate.getHeading());
-        packet.put("TargetV", String.valueOf(Math.round(targetV)));
-        packet.put("LauncherV", String.valueOf(Math.round(v)));
-
-        // Allow the dashboard to show the robot position
-        canvas = packet.fieldOverlay();
-        DashboardUtil.drawRobot(canvas, poseEstimate);
-
-        dashboard.sendTelemetryPacket(packet);
+        telemetry.addData("Target", robot.launcher.getTarget());
         //#endregion
 
         // Used to detect a button press vs a button hold
@@ -261,6 +356,7 @@ public class CompetitionTeleOp extends OpMode {
     @Override
     public void stop() {
         robot.launcher.setHammerPosition(AccessoryPosition.OPEN);
+        PoseStorage.POSE = robot.dt.getPoseEstimate();
     }
 
 }
