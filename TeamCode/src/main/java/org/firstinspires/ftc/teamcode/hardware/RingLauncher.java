@@ -4,15 +4,23 @@ import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.util.AccessoryPosition;
 
 @Config
 public class RingLauncher {
+    public static PIDFCoefficients LAUNCHER_PID = new PIDFCoefficients();
+
     // Static members to be used by the Dashboard
-    public static double LAUNCHER_VELOCITY = 0.90d;
+    public static double LAUNCHER_VELOCITY = 0.85d;
+    public static double POWERSHOT_VELOCITY = 0.76d;
     public static double HAMMER_POS = 0.0d;
+
+    public enum Target {
+        TOWER_TELEOP, POWERSHOT
+    }
 
     // FOR POWERSHOTS, a speed of approximately 1680 is good (0.84d)
 
@@ -27,14 +35,14 @@ public class RingLauncher {
     // 0.0 for open (not pushed in/resting)
     // 0.45 for closed (pushed in/launched)
 
+    private Target currentTarget;
+
     /**
      * Create and initialize the ring launcher from the HardwareMap
      *
      * @param hardwareMap The HardwareMap given in the init() portion of the OpMode
      */
     public RingLauncher(HardwareMap hardwareMap) {
-        LAUNCHER_VELOCITY = 0.89d;
-
         // Initialize components of the ring launcher
         flywheelMotor = hardwareMap.get(DcMotorEx.class, "flywheel");
         hammerServo = hardwareMap.get(Servo.class, "hammer");
@@ -42,8 +50,15 @@ public class RingLauncher {
         // Set the flywheel to run using encoder, important for keeping velocity as the battery wavers
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+        LAUNCHER_PID = flywheelMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER);
+        // Set PIDF coefficients for the flywheel motor
+        flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, LAUNCHER_PID);
+
         // Set the flywheel's direction (positive velocity should shoot rings)
         flywheelMotor.setDirection(DcMotor.Direction.FORWARD);
+
+        // Set the current target to the Tower by default
+        currentTarget = Target.TOWER_TELEOP;
     }
 
     public void setLauncherVelocity(double newVelocity) {
@@ -54,15 +69,24 @@ public class RingLauncher {
      * Update the launcher's velocity
      */
     public void updateVelocity() {
-        /*flywheelMotor.setVelocity(
-                COUNTS_PER_REVOLUTION * MAX_RPM * LAUNCHER_VELOCITY
-        );*/
-        //flywheelMotor.setPower(LAUNCHER_VELOCITY);
-        flywheelMotor.setVelocity(approx_vmax * LAUNCHER_VELOCITY);
+        switch(currentTarget) {
+            case TOWER_TELEOP:
+            default:
+                flywheelMotor.setVelocity(approx_vmax * LAUNCHER_VELOCITY);
+                break;
+            case POWERSHOT:
+                flywheelMotor.setVelocity(approx_vmax * POWERSHOT_VELOCITY);
+        }
     }
 
     public double getTargetV() {
-        return approx_vmax * LAUNCHER_VELOCITY;
+        switch(currentTarget) {
+            default:
+            case TOWER_TELEOP:
+                return approx_vmax * LAUNCHER_VELOCITY;
+            case POWERSHOT:
+                return approx_vmax * POWERSHOT_VELOCITY;
+        }
     }
 
     /**
@@ -70,6 +94,19 @@ public class RingLauncher {
      */
     public void updateHammer() {
         hammerServo.setPosition(HAMMER_POS);
+    }
+
+
+    /**
+     * Set the target which the launcher will use in order to set velocity
+     * @param newTarget The new target to aim for (an enum of type {@link Target})
+     */
+    public void setTarget(Target newTarget) {
+        this.currentTarget = newTarget;
+    }
+
+    public String getTarget() {
+        return currentTarget.name();
     }
 
     /**
@@ -89,7 +126,11 @@ public class RingLauncher {
     }
 
     public boolean isAtTargetVelocity() {
-        return  Math.abs(getTargetV() - flywheelMotor.getVelocity()) <= 20;
+        return targetVelocityDelta() <= 20;
+    }
+
+    public double targetVelocityDelta() {
+        return Math.abs(getTargetV() - flywheelMotor.getVelocity());
     }
 
     public AccessoryPosition getHammerPosition() {
