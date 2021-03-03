@@ -25,7 +25,6 @@ import com.acmerobotics.roadrunner.trajectory.constraints.ProfileAccelerationCon
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryAccelerationConstraint;
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityConstraint;
 import com.acmerobotics.roadrunner.util.NanoClock;
-import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -70,6 +69,11 @@ public class RRMecanumDrivetrain extends MecanumDrive {
 
     public static int POSE_HISTORY_LIMIT = 100;
 
+    @Override
+    protected double getRawExternalHeading() {
+        return 0;
+    }
+
     public enum Mode {
         IDLE,
         TURN,
@@ -93,7 +97,6 @@ public class RRMecanumDrivetrain extends MecanumDrive {
 
     private DcMotorEx leftFront, leftRear, rightRear, rightFront;
     private List<DcMotorEx> motors;
-    private BNO055IMU imu;
 
     private VoltageSensor batteryVoltageSensor;
 
@@ -118,7 +121,7 @@ public class RRMecanumDrivetrain extends MecanumDrive {
         ));
         accelConstraint = new ProfileAccelerationConstraint(MAX_ACCEL);
         follower = new HolonomicPIDVAFollower(TRANSLATIONAL_PID, TRANSLATIONAL_PID, HEADING_PID,
-                new Pose2d(0.5, 0.5, Math.toRadians(5.0)), 0.5);
+                new Pose2d(0.5, 0.5, Math.toRadians(2.0)), 0.75d);
 
         poseHistory = new LinkedList<>();
 
@@ -129,16 +132,6 @@ public class RRMecanumDrivetrain extends MecanumDrive {
         for (LynxModule module : hardwareMap.getAll(LynxModule.class)) {
             module.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
-
-        // TODO: adjust the names of the following hardware devices to match your configuration
-        imu = hardwareMap.get(BNO055IMU.class, "imu");
-        BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
-        parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
-        imu.initialize(parameters);
-
-        // TODO: if your hub is mounted vertically, remap the IMU axes so that the z-axis points
-        // upward (normal to the floor) using a command like the following:
-        // BNO055IMUUtil.remapAxes(imu, AxesOrder.XYZ, AxesSigns.NPN);
 
         leftFront = hardwareMap.get(DcMotorEx.class, "lf");
         leftRear = hardwareMap.get(DcMotorEx.class, "lr");
@@ -392,10 +385,5 @@ public class RRMecanumDrivetrain extends MecanumDrive {
         leftRear.setPower(v1);
         rightRear.setPower(v2);
         rightFront.setPower(v3);
-    }
-
-    @Override
-    public double getRawExternalHeading() {
-        return imu.getAngularOrientation().firstAngle;
     }
 }
