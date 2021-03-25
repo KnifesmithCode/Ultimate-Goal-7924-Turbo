@@ -244,6 +244,14 @@ public class CompetitionTeleOp extends OpMode {
                 if (robot.wobbleArm != null) robot.wobbleArm.setArmPosition(armPos);
                 //#endregion
 
+                //#region Ring Arm
+                if(gamepad2.dpad_up) {
+                    robot.ringArm.setRingArmPosition(AccessoryPosition.UP);
+                } else if (gamepad2.dpad_down) {
+                    robot.ringArm.setRingArmPosition(AccessoryPosition.DOWN);
+                }
+                //#endregion
+
                 //#region Macros & Misc.
                 // Automatic shooting positioning macro
                 if (gamepad1.dpad_right) {
