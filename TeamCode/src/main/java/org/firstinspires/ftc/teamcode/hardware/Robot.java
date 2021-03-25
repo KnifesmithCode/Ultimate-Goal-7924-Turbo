@@ -9,6 +9,7 @@ public class Robot {
     public RingLauncher launcher;
     public Intake intake;
     public WobbleArm wobbleArm;
+    public RingArm ringArm;
     public WobbleLatch wobbleLatch;
 
     /**
@@ -30,6 +31,9 @@ public class Robot {
 
         // Initialize the wobble goal arm
         wobbleArm = new WobbleArm(hardwareMap);
+
+        // Initialize the ring arm
+        ringArm = new RingArm(hardwareMap);
 
         // Initialize the wobble goal latch
         wobbleLatch = new WobbleLatch(hardwareMap);
